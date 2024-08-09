@@ -19,22 +19,19 @@ def Diff_Model(diff_model, optimizer, model):
 def Model_train(diff_model, optimizer, epoch, model):
     print('Training Epoch {}:'.format(epoch + 1))
     loss_ls = []
-    # 读取 JSON 文件
     with open(r"D:\IRT_fisher\datasets\PTADisc\C\C_train_stu_theta_80_unnum.json", "r") as file:
         data_tgt = json.load(file)
     with open(r"D:\IRT_fisher\datasets\PTADisc\DS\DS_train_stu_theta_80_unnum.json", "r") as file:
         data_cond = json.load(file)
-        # 将数据转换为一维张量
         # flat_list = [item for sublist in data_tgt for item in sublist]
         data_tgt = torch.tensor(data_tgt)
         # flat_list = [item for sublist in data_cond for item in sublist]
         data_cond = torch.tensor(data_cond)
-    file_path = r'D:\IRT_fisher\datasets\PTADisc\C\train_IRT_80_sort_Diff.csv'  # 替换为你的文件路径
+    file_path = r'D:\IRT_fisher\datasets\PTADisc\C\train_IRT_80_sort_Diff.csv' 
     data_res = pd.read_csv(file_path)
-    # 确定每次取的步长为 128
     batch_size = 8
 
-    # 使用 tqdm 迭代数据并显示进度条
+
     for i in tqdm.trange(0, len(data_tgt), batch_size, smoothing=0, mininterval=1.0):
         data_tgt1 = data_tgt[i:i + batch_size]
         data_cond1 = data_cond[i:i + batch_size]
@@ -79,19 +76,16 @@ def eval_mae(model):
     with torch.no_grad():
         with open(r"D:\IRT_fisher\datasets\PTADisc\DS\DS_test_stu_theta_20_unnum.json", "r") as file:
             data_cond = json.load(file)
-        # 读取 JSON 文件
         with open(r"D:\IRT_fisher\datasets\PTADisc\C\C_test_stu_theta_20_unnum.json", "r") as file:
             data_tgt = json.load(file)
-        # 将数据转换为一维tensor
         # flat_list = [item for sublist in data_tgt for item in sublist]
         data_tgt = torch.tensor(data_tgt)
         # flat_list = [item for sublist in data_cond for item in sublist]
         data_cond = torch.tensor(data_cond)
 
-        # 确定每次取的步长为 128
+
         batch_size = 8
 
-        # 使用 tqdm 迭代数据并显示进度条
         for i in tqdm.trange(0, len(data_tgt), batch_size, smoothing=0, mininterval=1.0):
             data_tgt1 = data_tgt[i:i + batch_size]
             data_cond1 = data_cond[i:i + batch_size]
@@ -115,7 +109,6 @@ def test_model(x, model, device):
 
 
 def main(model):
-    # 主函数的代码逻辑
     print("Diff_Model Start.")
     diff_steps = 1000
     diff_dim = 8
@@ -125,12 +118,9 @@ def main(model):
     diff_task_lambda = 0.1
     diff_mask_rate = 0.1
     diff_lr = 0.01
-    # 扩散模型参数设置
     diff_model = Diff.DiffCDR(diff_steps, diff_dim, emb_dim, diff_scale,
                               diff_sample_steps, diff_task_lambda, diff_mask_rate)
-    # 优化器参数设置
     optimizer_diff = torch.optim.Adam(params=diff_model.parameters(), lr=diff_lr)
-    # 本地函数调用，开始训练和测试
     Diff_Model(diff_model, optimizer_diff, model)
 
 
