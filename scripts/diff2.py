@@ -16,12 +16,12 @@ import torch.optim as optim
 from torch.utils.data import Dataset, DataLoader
 from tqdm import tqdm
 
-#############1是target,2是source##############
+
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 seed = 0
 random.seed(seed)
 np.random.seed(seed)
-torch.manual_seed(seed)  # 为CPU设置种子用于生成随机数，以使得结果是确定的
+torch.manual_seed(seed) 
 
 cond = 'C++'
 target = 'C'
@@ -33,7 +33,7 @@ data_target = json.load(open(f'../datasets/PTADisc/{target}/info.json', 'r'))
 
 input_dim = data_input['concept_cnt']
 target_dim = data_target['concept_cnt']
-##############################################CDM_data################################################
+
 dataset = target
 # read datasets
 test_triplets = pd.read_csv(f'../datasets/PTADisc/{dataset}/train_80_sort.csv', encoding='utf-8').to_records(
@@ -78,10 +78,9 @@ class CAU_Model(nn.Module):
         return x
 
     def adjust_dim(self, data_cond1, output_dim):
-        # 将cond的形状修改为和target的形状一样
+      
         if data_cond1.shape[1] != output_dim:
-            # 我们希望 data_cond1 的形状与 data_tgt1 的形状匹配
-            # 通过截断或填充 data_cond1
+          
             new_features = output_dim
             if data_cond1.shape[1] > new_features:
                 data_cond1 = data_cond1[:, :new_features]
@@ -89,10 +88,8 @@ class CAU_Model(nn.Module):
                 # for i in range(data_cond1.shape[1] - new_features):
                 #     for j in range(len(data_list)):
                 #         row = data_list[j]
-                #         # 找到最接近0的值及其索引
                 #         min_value = min(row, key=lambda x: abs(x))
                 #         min_index = row.index(min_value)
-                #         # 删除最接近0的值
                 #         del row[min_index]
                 # data_cond1 = torch.tensor(data_list)
             else:
@@ -151,17 +148,15 @@ class CustomDataset_diff_train(Dataset):
 
 
 def Get_diff_data():
-    # 读取 JSON 文件
     with open(f"../datasets/PTADisc/NCD+GMOCAT/{target}/{target}_stu_train_theta_unnum.json", "r") as file:
         data_tgt = json.load(file)
     with open(f"../datasets/PTADisc/NCD+GMOCAT/{cond}/{cond}_stu_train_theta_unnum.json", "r") as file:
         data_cond = json.load(file)
-        # 将数据转换为一维张量
         # flat_list = [item for sublist in data_tgt for item in sublist]
         data_tgt = torch.tensor(data_tgt)
         # flat_list = [item for sublist in data_cond for item in sublist]
         data_cond = torch.tensor(data_cond)
-    file_path = f'../datasets/PTADisc/{target}/train_80_sort_Diff.csv'  # 替换为你的文件路径
+    file_path = f'../datasets/PTADisc/{target}/train_80_sort_Diff.csv' 
     data_res = pd.read_csv(file_path)
     return data_tgt, data_cond, torch.tensor(data_res.values)
 
@@ -172,21 +167,19 @@ def train_Model(model, cond_file, target_file, IRT_Model, IRT_Model2):
     dataset_Model = CustomDataset(input_file, target_file)
     dataloader = DataLoader(dataset_Model, batch_size=batch, shuffle=True)
 
-    optimizer = optim.Adam(model.parameters(), lr=0.01)  # 随机梯度下降
+    optimizer = optim.Adam(model.parameters(), lr=0.01)
 
-    # 训练模型
+
     num_epochs = 200
     for epoch in range(num_epochs):
         model.train()
         running_loss = 0.0
         for inputs, targets in tqdm(dataloader, desc=f'Epoch {epoch + 1}/{num_epochs}'):
-            # 前向传播
             predictions = model(inputs)
             loss1 = torch.abs(torch.norm(predictions - targets))
             # loss2 = CAU_loss(IRT_Model, IRT_Model2, predictions)
             # print("loss2:", loss2)
             loss = loss1
-            # 反向传播和优化
             optimizer.zero_grad()
             loss.backward()
             optimizer.step()
@@ -197,11 +190,9 @@ def train_Model(model, cond_file, target_file, IRT_Model, IRT_Model2):
 
 
 def test_Model(model, validation_file):
-    # 加载验证数据
     validation_dataset = CustomDataset(validation_file)
     validation_dataloader = DataLoader(validation_dataset, batch_size=batch, shuffle=False)
 
-    # 验证模型并输出预测结果
     model.eval()
     predictions = []
     with torch.no_grad():
@@ -213,8 +204,6 @@ def test_Model(model, validation_file):
 
 def Diff_Model(diff_model, optimizer):
     print('=========Diff_Model========')
-
-    ##############################IRT Target#############################
     IRT_Model = pyat.NCDModel(**config)
     IRT_Model.adaptest_init(data, target)
     IRT_Model.adaptest_preload(f'../models/ncd/{target}_80_train.pt')
@@ -227,7 +216,6 @@ def Diff_Model(diff_model, optimizer):
     else:
         logging.warning('No results returned from the evaluation.')
 
-    ##############################IRT Source#############################
     IRT_Model2 = pyat.NCDModel(**config)
     IRT_Model2.adaptest_init(data2, cond)
     IRT_Model2.adaptest_preload(f'../models/ncd/{cond}_80_train.pt')
@@ -239,10 +227,8 @@ def Diff_Model(diff_model, optimizer):
             logging.info(f'{name}: {value}')
     else:
         logging.warning('No results returned from the evaluation.')
-    ###################################数据加载###################################
     rcd_data = data
     data_tgt, data_cond, data_res = Get_diff_data()
-    #################################对齐模块##################################
     CAU_model = CAU_Model(target_dim)
     train_Model(CAU_model, cond, target, IRT_Model, IRT_Model2)
     val_File = f'../datasets/PTADisc/NCD+GMOCAT/{cond}/{cond}_stu_train_theta_unnum.json'
@@ -257,7 +243,6 @@ def Diff_Model(diff_model, optimizer):
     # cond_data = Causalint_test(CAU_model, validation_dataset)
     # print(cond_data)
 
-    ###############################扩散模型模块###################################
     for i in range(epoch):
         loss = Model_train(diff_model, optimizer, i, IRT_Model, data_loader, rcd_data)
         logging.info(f'loss:{loss}')
@@ -267,17 +252,13 @@ def Diff_Model(diff_model, optimizer):
 
 
 def Model_train(diff_model, optimizer, epoch, IRT_Model, data_loader, rcd_data):
-    ##############################################diff_data################################################
 
     print('Diff Training Epoch {}:'.format(epoch + 1))
     loss_ls = []
-    # 确定每次取的步长为 128
     batch_size = batch
-    # 使用 tqdm 迭代数据并显示进度条
     for data_tgt, data_cond, data_res in tqdm(data_loader, desc=f'Epoch {epoch + 1}/{epoch}'):
         if data_cond.shape[1] != data_tgt.shape[1]:
-            # 我们希望 data_cond1 的形状与 data_tgt1 的形状匹配
-            # 通过截断或填充 data_cond1
+
             new_features = data_tgt.shape[1]
             if data_cond.shape[1] > new_features:
                 data_cond = data_cond[:, :new_features]
@@ -285,10 +266,8 @@ def Model_train(diff_model, optimizer, epoch, IRT_Model, data_loader, rcd_data):
                 for i in range(data_cond.shape[1] - new_features):
                     for j in range(len(data_list)):
                         row = data_list[j]
-                        # 找到最接近0的值及其索引
                         min_value = min(row, key=lambda x: abs(x))
                         min_index = row.index(min_value)
-                        # 删除最接近0的值
                         del row[min_index]
                 data_cond = torch.tensor(data_list)
             else:
@@ -318,50 +297,22 @@ def Model_train(diff_model, optimizer, epoch, IRT_Model, data_loader, rcd_data):
 
 def Causalint_train(IRT_Model, IRT_Model2, CAU_Model, data_cond, data_tgt, task=False):
     print("---------Causality Train------------")
-    optimizer = optim.Adam(CAU_Model.parameters(), lr=0.01)  # 梯度下降
+    optimizer = optim.Adam(CAU_Model.parameters(), lr=0.01)  
     input_file = f'../datasets/PTADisc/NCD+GMOCAT/Java/Java_stu_train_theta_unnum.json'
     target_file = f'../datasets/PTADisc/NCD+GMOCAT/DS/DS_stu_train_theta_unnum.json'
     dataset = CustomDataset(input_file, target_file)
     dataloader = DataLoader(dataset, batch_size=batch, shuffle=True)
     epochs = 100
-    # for epoch in range(epochs):
-    #     CAU_Model.train()
-    #     running_loss = 0.0
-    #     running_loss2 = 0.0
-    #     # for inputs in tqdm(dataloader, desc=f'Epoch {epoch + 1}/{epochs}'):
-    #     #         # 前向传播
-    #     #         predictions = CAU_Model(inputs)
-    #     #         loss1 = CAU_loss(IRT_Model, IRT_Model2, predictions)
-    #     #         # 反向传播和优化
-    #     #         optimizer.zero_grad()
-    #     #         loss1.backward()  # 反向传播
-    #     #         optimizer.step()
-    #     #
-    #     #         running_loss += loss1.item()
-    #
-    #     for inputs, targets in tqdm(dataloader, desc=f'Epoch {epoch + 1}/{epochs}'):
-    #
-    #             predictions = CAU_Model(inputs)
-    #             loss2 = torch.abs(torch.norm(predictions - targets))
-    #
-    #             # 反向传播和优化
-    #             optimizer.zero_grad()
-    #             loss2.backward()  # 反向传播
-    #             optimizer.step()
-    #
-    #             running_loss2 += loss2.item()
-    #
-    #     print(f'Epoch [{epoch + 1}/{epochs}], Loss1: {running_loss}')
-    #     print(running_loss2)
+   
     for epoch in range(epochs):
         CAU_Model.train()
         running_loss = 0.0
         for inputs, targets in tqdm(dataloader, desc=f'Epoch {epoch + 1}/{epochs}'):
-            # 前向传播
+
             predictions = CAU_Model(inputs)
             loss = torch.abs(torch.norm(targets - predictions))
 
-            # 反向传播和优化
+
             optimizer.zero_grad()
             loss.backward()
             optimizer.step()
@@ -407,7 +358,7 @@ def CAU_loss(IRT_Model, IRT_Model2, predictions):
         score2 = user_data2['score']
 
         if pred_value.shape[0] != input_dim:
-            # 调整 pred_value 的长度
+
             if pred_value.shape[0] > input_dim:
                 pred_value = pred_value[:input_dim]
             else:
@@ -443,7 +394,6 @@ def eval_TrainSet(diff_model, CAU_model):
     model = diff_model
     model.eval()
     with torch.no_grad():
-        # 确定每次取的步长为 128
         for inputs in tqdm(data_loader):
             outputs = test_model(inputs, model, 'cpu')
             predicts.extend(outputs.cpu().numpy().tolist())
@@ -461,44 +411,19 @@ def eval_mae(model, CAU_model):
     with torch.no_grad():
         with open(f"../datasets/PTADisc/NCD+GMOCAT/{cond}/{cond}_stu_test_theta_unnum.json", "r") as file:
             data_cond = json.load(file)
-        # 读取 JSON 文件
         with open(f"../datasets/PTADisc/NCD+GMOCAT/{target}/{target}_stu_test_theta_unnum.json", "r") as file:
             data_tgt = json.load(file)
-        # 将数据转换为一维tensor
         # flat_list = [item for sublist in data_tgt for item in sublist]
         data_tgt = torch.tensor(data_tgt)
         # # flat_list = [item for sublist in data_cond for item in sublist]
         data_cond = torch.tensor(data_cond)
-        # 确定每次取的步长为 128
         batch_size = batch
         val_File = f'../datasets/PTADisc/NCD+GMOCAT/{cond}/{cond}_stu_test_theta_unnum.json'
         data_cond = test_Model(CAU_model, val_File)
         data_val = CustomDataset_diff_train(data_cond)
         data_loader = DataLoader(data_val, batch_size=batch_size, shuffle=False)
         # print(data_cond)
-        # 使用 tqdm 迭代数据并显示进度条
         for input in tqdm(data_loader):
-
-            # if input.shape[1] != data_tgt.shape[1]:
-            #     # 我们希望 data_cond1 的形状与 data_tgt1 的形状匹配
-            #     # 通过截断或填充 data_cond1
-            #     new_features = data_tgt.shape[1]
-            #     if input.shape[1] > new_features:
-            #         input = input[:, :new_features]
-            #         data_list = input.tolist()
-            #         for i in range(input.shape[1] - new_features):
-            #             for j in range(len(data_list)):
-            #                 row = data_list[j]
-            #                 # 找到最接近0的值及其索引
-            #                 min_value = min(row, key=lambda x: abs(x))
-            #                 min_index = row.index(min_value)
-            #                 # 删除最接近0的值
-            #                 del row[min_index]
-            #         input = torch.tensor(data_list)
-            #     else:
-            #         pad_size = new_features - input.shape[1]
-            #         mean_values = int(torch.mean(torch.mean(input, dim=1, keepdim=True)))
-            #         input = torch.nn.functional.pad(input, (mean_values, pad_size))
 
             device = "cpu"
             pred = test_model(input, model, device)
@@ -519,7 +444,6 @@ def test_model(x, model, device):
 
 
 def main():
-    # 主函数的代码逻辑
     print("Diff_Model Start.")
     dataInfo = json.load(open(f'../datasets/PTADisc/{target}/info.json', 'r'))
     diff_steps = 1000
@@ -530,12 +454,9 @@ def main():
     diff_task_lambda = 0.1
     diff_mask_rate = 0.1
     diff_lr = 0.001
-    # 扩散模型参数设置
     diff_model = Diff.DiffCDR(diff_steps, diff_dim, emb_dim, diff_scale,
                               diff_sample_steps, diff_task_lambda, diff_mask_rate)
-    # 优化器参数设置
     optimizer_diff = torch.optim.Adam(params=diff_model.parameters(), lr=diff_lr)
-    # 本地函数调用，开始训练和测试
     Diff_Model(diff_model, optimizer_diff)
 
 
