@@ -11,7 +11,7 @@ import diffusion
 
 seed = 42
 np.random.seed(seed)
-torch.manual_seed(seed)# 为CPU设置种子用于生成随机数，以使得结果是确定的
+torch.manual_seed(seed)
 
 dataset = 'Python'
 step = 'test'
@@ -35,7 +35,6 @@ val_set = train_set.tail(int(len(train_set) * 0.1)).to_records(index=False)
 val_data = pyat.TrainDataset(val_set, concept_map,
                              dataInfo[f'{step}_cnt'], dataInfo['problem_cnt'], dataInfo['concept_cnt'])
 if rcd_model == 'irt':
-    # 参数配置
     config = {
         'learning_rate': 0.002,
         'batch_size': 32,
@@ -90,29 +89,28 @@ logging.basicConfig(
 
 if rcd_model == 'irt':
     print("Model = irt")
-    model = pyat.IRTModel(**config)  # IRT模型初始化传入参数
-    model.adaptest_init(train_data)  # 初始化模型
-    model.adaptest_train(train_data)  # 训练模型
+    model = pyat.IRTModel(**config)  
+    model.adaptest_init(train_data)  
+    model.adaptest_train(train_data)  
 
-    data = []  # 创建一个空列表来存储每个学生的数据
-    # for i in range(0, dataInfo['student_cnt']):  # 在3963个学生中分别获得他们的theta并存入列表
+    data = [] 
+    # for i in range(0, dataInfo['student_cnt']):  
     #     value = model.get_theta(i)
-    #     # 创建一个字典来存储每个学生的ID和theta值
+    #     
     #     student_data = {
     #         "stu_id": i,
     #         "theta": value.tolist()
     #     }
-    #     data.append(student_data)  # 将字典添加到列表中
+    #     data.append(student_data) 
 
-    for i in range(0, dataInfo[f'{step}_cnt']):  # 在n个学生中分别获得他们的theta并存入列表
+    for i in range(0, dataInfo[f'{step}_cnt']): 
         value = -1 * model.get_theta(i)
-        # 创建一个字典来存储每个学生的ID和theta值
         data.append(value.tolist())
 
-    # 将列表保存为JSON文件
+   
     with open(f'../datasets/PTADisc/IRT/{dataset}/{dataset}_stu_{step}_theta_unnum.json', 'w') as file:
-        json.dump(data, file, indent=4)  # 使用indent参数使JSON文件更易读
-    # model.adaptest_save(f'../models/irt/{dataset}_80_train.pt')  # 保存模型
+        json.dump(data, file, indent=4)  
+    # model.adaptest_save(f'../models/irt/{dataset}_80_train.pt')  
 
 
 
