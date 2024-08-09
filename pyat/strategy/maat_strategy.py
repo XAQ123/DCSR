@@ -89,7 +89,6 @@ class MAATStrategy(AbstractStrategy):
         return (sum(cnt / (cnt + 1) for c, cnt in concept_cnt.items())
                 / sum(1 for c in concept_cnt))
 
-    # 从未测试的题目中选择出 n_candidates 个候选题目,然后计算每个候选题目的覆盖度增益,选择覆盖度增益最大的题目。覆盖度增益是指新增的概念覆盖数量。
     def adaptest_select(self, model: AbstractModel, adaptest_data: AdapTestDataset):
         assert hasattr(model, 'expected_model_change'), \
             'the models must implement expected_model_change method'
@@ -103,30 +102,29 @@ class MAATStrategy(AbstractStrategy):
             selection[sid] = candidates[0]
         return selection
 
-    # 计算每个未测试题目的 Fisher information 值,选择 Fisher 信息最大的题目。Fisher信息反映了数据对参数估计的含量,选 Fisher 信息最大的题目可以获得对学生能力估计最多的信息。
+   
     def sel_fisher(self, model, adaptest_data: AdapTestDataset):
         selection = {}
         for sid in range(adaptest_data.num_students):
             untested_questions = torch.tensor(list(adaptest_data.untested[sid]))
 
-            theta = np.array(model.model.theta(torch.tensor(sid)).detach().numpy())  # 获取当前学生的IRT模型参数，IRTembedding得到的？
-
-            alpha = np.array(model.model.alpha(untested_questions).detach().numpy())  # 未测试题目的IRT模型参数
-            beta = np.array(model.model.beta(untested_questions).detach().numpy())  # ？？？这些参数不需要训练？
-            fisher = self.fisher_information(model, alpha, beta, theta)  # 得到160题的Fisher值
+            theta = np.array(model.model.theta(torch.tensor(sid)).detach().numpy()) 
+            alpha = np.array(model.model.alpha(untested_questions).detach().numpy()) 
+            beta = np.array(model.model.beta(untested_questions).detach().numpy())  
+            fisher = self.fisher_information(model, alpha, beta, theta)  
             selection[sid] = untested_questions[np.argmax(fisher)].item()
         return selection
 
-    # 给定 IRT 模型参数和学生能力,计算每道题的 Fisher 信息值。
+    
     def fisher_information(self, model, alpha, beta, theta):
         """ calculate the fisher information
         """
         try:
             information = []
             for t in theta:
-                p = model.irf(alpha, beta, t)  # 每题答对概率
-                q = 1 - p  # 答错概率
-                pdt = model.pd_irf_theta(alpha, beta, t)  # 对于theta的偏导
+                p = model.irf(alpha, beta, t)  
+                q = 1 - p  
+                pdt = model.pd_irf_theta(alpha, beta, t) 
                 # information.append((pdt**2) / (p * q))
                 information.append(p * q * (alpha ** 2))
             information = np.array(information)
