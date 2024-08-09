@@ -7,12 +7,12 @@ import torch
 import numpy as np
 import pandas as pd
 
-sys.path.append('..')# 代表添加当前路径的上一级目录
+sys.path.append('..')
 import pyat
 
 seed = 0
 np.random.seed(seed)
-torch.manual_seed(seed)# 为CPU设置种子用于生成随机数，以使得结果是确定的
+torch.manual_seed(seed)
 
 dataset = 'DS'
 # read datasets
@@ -38,8 +38,8 @@ config = {
 
 logging.basicConfig(
     level=logging.INFO,
-    datefmt='%Y-%m-%d %H:%M:%S',#日志时间格式
-    format='[%(asctime)s %(levelname)s] %(message)s',#日志格式
+    datefmt='%Y-%m-%d %H:%M:%S',
+    format='[%(asctime)s %(levelname)s] %(message)s',
 )
 
 test_length = 5
