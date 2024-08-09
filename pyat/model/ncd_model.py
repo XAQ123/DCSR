@@ -23,17 +23,10 @@ import pyat
 import math
 import warnings
 warnings.filterwarnings("ignore")
-# exer_n = 17746
-# knowledge_n = 123
-# student_n = 4163
-# # can be changed according to command parameter
-# device = torch.device(('cuda:0') if torch.cuda.is_available() else 'cpu') # 定义设备
-# epoch_n = 5 # 训练轮数
 
 sys.path.append('../..')
 
 def load_theta_from_json(stu_set):
-    print(f"初始化过了，目标:{stu_set}")
     with open(f'../datasets/PTADisc/NCD+MAAT/Liner/{stu_set}/C++_for_{stu_set}.json', 'r') as f:
         embedding_data = json.load(f)
         embedding_tensor = torch.tensor(embedding_data)
@@ -280,18 +273,15 @@ class NCDModel(AbstractModel, nn.Module):
             accuracy = correct_count / exer_count
             # compute AUC
             auc = roc_auc_score(label_all, pred_all)
-            print('训练：epoch= %d, acc= %f, auc= %f' % (ep + 1, accuracy, auc))
-            # 对这个模型进行验证并保存验证结果
+           
             rmse1, auc1 = self.validate_ncd(train_data,  val_data)
-            print('验证：auc= %f, rmse= %f' % (auc1, rmse1))
+           
             if rmse_b > rmse1:
                 rmse_b = rmse1
                 best_epoch = ep
-                # 将最优的epoch训练的网络结构保存起来
                 # self.adaptest_save(self.config['model_save_path'])
         print('best_epoch', best_epoch, 'min_rmse:', rmse_b)
         start_theta = self.student_emb.weight.clone()
-        print('start_theta训练完后', start_theta)
         return start_theta
 
     def validate(self, train_data):
@@ -359,153 +349,7 @@ class NCDModel(AbstractModel, nn.Module):
         model_dict = {k: v for k, v in model_dict.items() if 'student_emb' not in k}
         torch.save(model_dict, path)
 
-    # def meta_pre(self, train_data: TrainDataset):
-    #     lr = self.config['learning_rate']
-    #     bsz = self.config['batch_size']
-    #     device = self.config['device']
-    #     logging.info('train dnn on {}'.format(device))
-    #
-    #     self.to(device)
-    #     train_loader = data.DataLoader(train_data, batch_size=bsz, shuffle=True)
-    #     # optimizer = torch.optim.Adam(self.model.parameters(), lr=lr)
-    #     meta_loss_list = []
-    #
-    #     num = 2*(self.stu_dim)+1
-    #
-    #     loss_net = Net_loss(num)
-    #     optimizer1 = torch.optim.Adam(loss_net.parameters(), lr=0.001)
-    #
-    #     for ep in range(1, 6):
-    #         meta_loss = 0
-    #         # for i in range(len(train_loader)):
-    #         user_id_list = list(train_loader.dataset.data.keys())
-    #         for user_count in tqdm(range(len(user_id_list))):
-    #             i = user_id_list[user_count]
-    #             # 获取每个用户的行为数据
-    #             all_data = train_loader.dataset.data[i]
-    #             student_ids, question_ids, correctness = self.gain_data(all_data, i)
-    #             # 划分数据集，按照5:5进行拆分成support_set: query_set
-    #             support_set_sid, query_set_sid, support_set_qid, support_set_cor, query_set_qid, query_set_cor = self.divide(student_ids, question_ids, correctness, 0.5)
-    #             # 获得用户的support_set 和 query_set
-    #             student_emb = self.student_emb.weight[support_set_sid]
-    #             e_discrimination = self.e_discrimination.weight[support_set_qid]
-    #             k_difficulty = self.k_difficulty.weight[support_set_qid]
-    #
-    #             for j in range(len(student_emb)):
-    #                 if j == 0:
-    #                     param = torch.cat((student_emb[j], e_discrimination[j], k_difficulty[j]))
-    #                     param = param.unsqueeze(0)
-    #                 else:
-    #                     add_param = torch.cat((student_emb[j], e_discrimination[j], k_difficulty[j]))
-    #                     # 升维
-    #                     add_param = add_param.unsqueeze(0)
-    #                     param = torch.cat((param, add_param), dim=0)
-    #
-    #             # 经过DNN正向传播
-    #             optimizer1.zero_grad()
-    #             output_loss = loss_net.forward(param)
-    #             output_loss1 = output_loss.clone()
-    #             output_loss = output_loss.tolist()
-    #             # 获取最大loss索引
-    #             max_index = list(map(output_loss.index, heapq.nlargest(int(len(output_loss)*0.4), output_loss)))
-    #             rmse_list = []
-    #             auc_list = []
-    #             for n in range(len(max_index)):
-    #                 self.adaptest_preload('../models/ncd/start_param.pt')
-    #                 m_sid = support_set_sid[max_index[n]]
-    #                 m_qid = support_set_qid[max_index[n]]
-    #                 m_cor = support_set_cor[max_index[n]]
-    #
-    #                 # 加入行为记录进行theta参数更新
-    #                 optimizer = torch.optim.Adam(self.student_emb.parameters(), lr=lr)
-    #                 for name, param in self.named_parameters():
-    #                     if 'student_emb' not in name:
-    #                         param.requires_grad = False
-    #                 loss_function = nn.NLLLoss()
-    #                 for epi in range(1, 100):
-    #                     optimizer.zero_grad()
-    #                     m_sid = torch.tensor(m_sid)
-    #                     # print('stu', student_emb)
-    #                     m_qid = torch.tensor(m_qid)
-    #                     m_know = train_data._knowledge_embs[m_qid]
-    #                     m_cor = torch.tensor([m_cor])
-    #                     pred_1 = self.forward(m_sid, m_qid, m_know).view(-1)
-    #                     pred_0 = torch.ones(pred_1.size()).to(device) - pred_1
-    #                     pred = torch.cat((pred_0, pred_1), 0)
-    #                     m_loss = loss_function(torch.log(pred.reshape(1, 2)), m_cor.long())
-    #                     m_loss.backward()
-    #                     optimizer.step()
-    #
-    #                 # 用query_set来验证theta
-    #                 with torch.no_grad():
-    #                     qry_sid = torch.LongTensor(query_set_sid)
-    #                     qry_qid = torch.LongTensor(query_set_qid)
-    #                     # qry_cor = torch.LongTensor(query_set_cor)
-    #                     qry_know = train_data._knowledge_embs[qry_qid]
-    #                     output = self.forward(qry_sid, qry_qid, qry_know)
-    #                     output = output.view(-1)
-    #                     pred = np.array(output.tolist())
-    #                     real = np.array(query_set_cor)
-    #                     rmse = np.sqrt(np.mean(np.square(real - pred)))
-    #                     rmse_list.append(rmse)
-    #                     try:
-    #                         auc = roc_auc_score(real, pred)
-    #                     except ValueError:
-    #                         pass
-    #                     auc_list.append(auc)
-    #
-    #             # 设计偏序loss
-    #             # max_loss = 0
-    #             # n = len(rmse_list)
-    #             # for p in range(len(rmse_list)-1):
-    #             #     for q in range(p+1, len(rmse_list)-p):
-    #             #         if rmse_list[p] < rmse_list[p+q]:
-    #             #             if output_loss1[max_index[p]] > output_loss1[max_index[p+q]]:
-    #             #                 a = -q*(n-p)
-    #             #             else:
-    #             #                 a = -q*(n-p)
-    #             #         else:
-    #             #             if output_loss1[max_index[p]] < output_loss1[max_index[p+q]]:
-    #             #                 a = q*(n-p)
-    #             #             else:
-    #             #                 a = q*(n-p)
-    #             #
-    #             #         max_loss = max_loss + max(0, a * (output_loss1[max_index[p]] - output_loss1[max_index[p+q]]))
-    #
-    #             n = len(auc_list)
-    #             max_loss = 0
-    #             for p in range(len(auc_list) - 1):
-    #                 for q in range(p + 1, len(auc_list) - p):
-    #                     if auc_list[p] > auc_list[p + q]:
-    #                         if output_loss1[max_index[p]] > output_loss1[max_index[p + q]]:
-    #                             a = - (n-p)
-    #                         else:
-    #                             a = - (n-p)
-    #                     else:
-    #                         if output_loss1[max_index[p]] < output_loss1[max_index[p + q]]:
-    #                             a = (n-p)
-    #                         else:
-    #                             a = (n-p)
-    #
-    #                     max_loss = max_loss + max(0, a * (output_loss1[max_index[p]] - output_loss1[max_index[p + q]]))
-    #                 # print(max_loss)
-    #             meta_loss += max_loss
-    #             if max_loss != 0:
-    #                 max_loss.backward()
-    #                 optimizer1.step()
-    #
-    #         ave_meta_loss = meta_loss.item() / len(user_id_list)
-    #         meta_loss_list.append(ave_meta_loss)
-    #         print('meta_loss', ave_meta_loss)
-    #
-    #
-    #     self.save_snapshot(loss_net, self.config['dnn_save_path'])
-    #     plt.figure()
-    #     plt.plot(range(len(meta_loss_list)), meta_loss_list, color='blue', linewidth=2.0, linestyle='--',
-    #              label='train_ave_loss')
-    #     plt.legend()
-    #     plt.title('ave-loss-figure-chonggou')
-    #     plt.show()
+   
 
     def gain_data(self, all_data, i):
         student_ids = []
@@ -652,7 +496,6 @@ class NCDModel(AbstractModel, nn.Module):
 
 
     def select_emc(self, sid, qid, kno_embs):
-        # kno_emb 应该输入为所有题目
         theta = self.student_emb(torch.tensor(sid))
         stu_theta = torch.nn.Parameter(torch.tensor(theta, requires_grad=True, dtype=torch.float32))
         epochs = self.config['num_epochs']
