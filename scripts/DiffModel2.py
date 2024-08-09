@@ -17,7 +17,7 @@ import pyat
 
 noise_schedule = NoiseScheduleVP(schedule='linear')
 
-sys.path.append('..')  # 代表添加当前路径的上一级目录
+sys.path.append('..')  
 
 # ---------------------------------------------------------
 def get_timestep_embedding(timesteps, embedding_dim: int):
@@ -173,32 +173,32 @@ def diffusion_loss_fn(model, x_0, cond_emb, y_input,
         final_output = p_sample_loop(model, cond_emb, device)
         y_pred = final_output.tolist()
 
-        file_path = f'../datasets/PTADisc/C/train_80_sort_Diff.csv'  # 替换为你的文件路径
+        file_path = f'../datasets/PTADisc/C/train_80_sort_Diff.csv' 
         data_res = pd.read_csv(file_path)
         data_log = pd.DataFrame(data_log.numpy(), columns=data_res.columns)
         score_pred = []
-        # 提取 'item_id' 列的值
+       
         item_id_column = data_log['item_id']
         user_id_colum = data_log['user_id']
         for i, pred_value in zip(item_id_column, y_pred):
-            # ncd计算
+           
             rcd_data._knowledge_embs = rcd_data._knowledge_embs.to(device)
             knowledge_embs = rcd_data._knowledge_embs[i]
             pred = IRT_Model.forward_diff(torch.tensor(pred_value), torch.LongTensor([i]), knowledge_embs)
-            #irt计算
+            
             # alpha = torch.tensor(IRT_Model.get_alpha(i))
             # beta = torch.tensor(IRT_Model.get_beta(i))
             #
-            # # 计算公式：(题目难度参数 * 学生能力参数).sum(要求和的维度, 是否保留和的维度) + 题目区分度参数
+            
             # pred = (alpha * torch.tensor(pred_value)).sum() + beta
             #
-            # # 调用torch.sigmoid（）将网络输出实数值映射到(0,1)区间,用于分类判断。
+           
             # pred = torch.sigmoid(pred)
             score_pred.append(pred)
 
-        # 转换为 PyTorch 张量
+       
         score_pred = torch.stack(score_pred)
-        # 转换 'score' 列为 PyTorch 张量
+        
         score = torch.tensor(data_log['score'].to_numpy())
 
         epsilon = 1e-7
